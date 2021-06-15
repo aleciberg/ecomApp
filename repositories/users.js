@@ -1,32 +1,48 @@
-const fs = require("fs");
-const crypto = require("crypto");
+const fs = require('fs');
+const crypto = require('crypto');
+const util = require('util');
+
+const scrypt = util.promisify(crypto.scrypt);
 
 class UsersRepository {
   constructor(filename) {
     if (!filename) {
-      throw new Error("Creating a repository requires a filename");
+      throw new Error('Creating a repository requires a filename');
     }
     this.filename = filename;
     try {
       fs.accessSync(this.filename);
     } catch (error) {
-      fs.writeFileSync(this.filename, "[]");
+      fs.writeFileSync(this.filename, '[]');
     }
   }
 
   async getAll() {
     return JSON.parse(
       await fs.promises.readFile(this.filename, {
-        encoding: "utf8",
+        encoding: 'utf8',
       })
     );
   }
 
   async create(attrs) {
     attrs.id = this.randomID();
+    const salt = crypto.randomBytes(8).toString('hex');
+    const buf = await scrypt(attrs.password, salt, 64);
     const records = await this.getAll();
-    records.push(attrs);
+    const record = {
+      ...attrs,
+      password: `${buf.toString('hex')}.${salt}`,
+    };
+    records.push(record);
     await this.writeAll(records);
+    return record;
+  }
+
+  async comparePasswords(saved, supplied) {
+    const [hashed, salt] = saved.split('.');
+    const hashedSuppliedBuffer = await scrypt(supplied, salt, 64);
+    return hashed === hashedSuppliedBuffer.toString('hex');
   }
 
   async writeAll(records) {
@@ -37,7 +53,7 @@ class UsersRepository {
   }
 
   randomID() {
-    return crypto.randomBytes(4).toString("hex");
+    return crypto.randomBytes(4).toString('hex');
   }
 
   async getOne(id) {
@@ -79,4 +95,4 @@ class UsersRepository {
   }
 }
 
-module.exports = new UsersRepository("users.json");
+module.exports = new UsersRepository('users.json');
