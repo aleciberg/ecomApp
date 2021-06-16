@@ -2,6 +2,9 @@ const layout = require('../layout');
 
 const getError = (errors, prop) => {
   try {
+    if (errors) {
+      console.log(errors);
+    }
     return errors.mapped()[prop].msg;
   } catch (error) {
     return '';

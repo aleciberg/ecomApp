@@ -25,12 +25,13 @@ module.exports = {
       if (passwordConfirmation !== req.body.password) {
         throw new Error('Passwords must match');
       }
+      return true;
     }),
   requireEmailExists: check('email')
     .trim()
     .normalizeEmail()
     .isEmail()
-    .withMessage('Must provide a valid email.')
+    .withMessage('Email not valid!')
     .custom(async (email) => {
       const user = await usersRepo.getOneBy({ email });
       if (!user) {
@@ -44,7 +45,7 @@ module.exports = {
       if (!user) {
         throw new Error('Password is not valid!');
       }
-      const validPassword = await users.comparePasswords(
+      const validPassword = await usersRepo.comparePasswords(
         user.password,
         password
       );
